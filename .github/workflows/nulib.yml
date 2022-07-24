@@ -1,0 +1,77 @@
+name: Copy Nulib from Nuran
+
+
+on:
+  push:
+  workflow_dispatch:
+  schedule:
+    # Runs once a week.
+    - cron: "10 1 * * 0"
+
+
+jobs:
+
+  Nulib:
+    name: Sync Nulib from Nuran
+    runs-on: ubuntu-latest
+
+    steps:
+
+      # Prepare working table
+
+      - name: Checkout Nuran
+        uses: actions/checkout@v2
+        with:
+          repository: MidAutumnMoon/MidAutumnMoon
+          ref: master
+          path: Nuran
+
+      - name: Checkout the old Nulib
+        uses: actions/checkout@v3
+        with:
+          repository: ${{ github.repository }}
+          ref: master
+          path: OldNulib
+
+      - name: Create the new Nulib
+        run: |
+          git init --initial-branch=master "$GITHUB_WORKSPACE/Nulib"
+
+
+      # Do the actual work
+
+      - name: Extract Nulib
+        run: |
+          cp --recursive --verbose \
+            "$GITHUB_WORKSPACE/Nuran/lib/"* \
+            "$GITHUB_WORKSPACE/Nulib"
+
+      - name: Copy the workflows.yml
+        run: |
+          cp --recursive --verbose \
+            "$GITHUB_WORKSPACE/OldNulib/.github" \
+            "$GITHUB_WORKSPACE/Nulib"
+
+
+      # Git-ing
+
+      - name: Configure git
+        run: |
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+
+      - name: Commit changes to Nulib
+        run: |
+          pushd "$GITHUB_WORKSPACE/Nulib"
+            git add --all --verbose
+            git commit --all --verbose --message "last synced on $(date -Idate)"
+          popd
+
+      - name: Push
+        uses: ad-m/github-push-action@master
+        with:
+          directory: ${{ github.workspace }}/Nulib
+          branch: master
+          force: true
+
+
